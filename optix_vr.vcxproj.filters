@@ -38,6 +38,12 @@
     <ClInclude Include="launch_params.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cuda_buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sbt_record.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="renderer.cu">

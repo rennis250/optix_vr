@@ -119,12 +119,12 @@ const char* readPTX(size_t* size)
     const char** log = NULL;
     const std::vector<const char*> compilerOptions = { CUDA_NVRTC_OPTIONS };
 
-    std::cout << std::filesystem::current_path() << std::endl;
+    // std::cout << std::filesystem::current_path() << std::endl;
 
     const char* filename = "./renderer.cu";
     getCuStringFromFile(cu, filename);
 
-    std::cout << cu << std::endl;
+    // std::cout << cu << std::endl;
 
     getPtxFromCuString(*ptx, cu.c_str(), "renderer", log, compilerOptions);
 

@@ -88,9 +88,29 @@ __device__ void setPayload(float3 p)
     optixSetPayload_2(float_as_int(p.z));
 }
 
+__device__ float3 color(float3 ray_origin, float3 ray_direction) {
+    float3 n = normalize(ray_direction);
+    float t = (n.y + 1.0);
+    float3 a = make_float3(1.0, 1.0, 1.0);
+    float3 b = make_float3(0.5, 0.7, 1.0);
+    return (1.0-t)*a + t*b;
+}
+
 extern "C" __global__ void __miss__ms()
 {
-    MissData* miss_data =
-        reinterpret_cast<MissData*>(optixGetSbtDataPointer());
-    setPayload(miss_data->bg_color);
+    MissData* miss_data = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
+
+    // Lookup our location within the launch grid
+    const uint3 idx = optixGetLaunchIndex();
+    const uint3 dim = optixGetLaunchDimensions();
+
+    // Map our launch idx to a screen location and create a ray from 
+    // the camera location through the screen
+    float3 ray_origin, ray_direction;
+    computeRay(idx, dim, ray_origin, ray_direction);
+
+    float3 col = color(ray_origin, ray_direction);
+
+    // setPayload(miss_data->bg_color);
+    setPayload(col);
 }
