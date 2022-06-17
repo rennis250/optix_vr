@@ -11,7 +11,8 @@
 
 #define SAMPLES_ABSOLUTE_INCLUDE_DIRS \
   "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.4.0/include", \
-  "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2/include", 
+  "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2/include", \
+  "."
 
 // NVRTC compiler options
 #define CUDA_NVRTC_OPTIONS  \
@@ -122,6 +123,9 @@ const char* readPTX(size_t* size)
 
     const char* filename = "./renderer.cu";
     getCuStringFromFile(cu, filename);
+
+    std::cout << cu << std::endl;
+
     getPtxFromCuString(*ptx, cu.c_str(), "renderer", log, compilerOptions);
 
     *size = ptx->size();

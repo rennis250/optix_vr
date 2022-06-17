@@ -22,4 +22,3 @@ struct HitGroupData {
 struct MissData {
     float3 bg_color;
 };
-

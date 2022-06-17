@@ -1,4 +1,4 @@
-﻿#include <optix.h>
+#include <optix.h>
 #include <cuda_runtime.h>
 #include <optix_device.h>
 
@@ -39,7 +39,7 @@ extern "C" __global__ void __raygen__rg()
     // Map our launch idx to a screen location and create a ray from 
     // the camera location through the screen
     float3 ray_origin, ray_direction;
-    computeRay(make_uint3(idx.x, idx.y, 0), dim, ray_origin, ray_direction);
+    computeRay(idx, dim, ray_origin, ray_direction);
 
     // Trace the ray against our scene hierarchy
     unsigned int p0, p1, p2;
@@ -75,7 +75,7 @@ extern "C" __global__ void __closesthit__ch()
     const float2 barycentrics = optixGetTriangleBarycentrics();
 
     // Convert to color and assign to our payload outputs.
-    const float3 c = make_float3(barycentrics.x, barycentrics.y, 1.0f);
+    const float3 c = make_float3(barycentrics.x, barycentrics.y , 1.0f);
     optixSetPayload_0(float_as_int(c.x));
     optixSetPayload_1(float_as_int(c.y));
     optixSetPayload_2(float_as_int(c.z));

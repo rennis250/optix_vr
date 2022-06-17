@@ -2,7 +2,6 @@
 
 #include <cuda_runtime.h>
 #include <vector_types.h>
-#include <math.h>
 
 #define __both__ __host__ __device__
 
