@@ -56,6 +56,7 @@ namespace rob {
         CUdeviceptr m_temp_buffer_gas = 0;
         CUdeviceptr m_gas_output_buffer = 0;
         CUdeviceptr m_d_param = 0;
+        CUdeviceptr m_d_vertices = 0;
 
         // std::vector<OptixProgramGroup> m_program_groups;
         OptixProgramGroup m_program_groups[3] = { };
@@ -108,17 +109,16 @@ namespace rob {
 
         // Allocate and copy device memory for our input triangle vertices
         const size_t vertices_size = sizeof(float3) * vertices.size();
-        CUdeviceptr d_vertices = 0;
         try {
             CUDA_CHECK(
                 cudaMalloc(
-                    reinterpret_cast<void**>(&d_vertices),
+                    reinterpret_cast<void**>(&m_d_vertices),
                     vertices_size
                 )
             );
             CUDA_CHECK(
                 cudaMemcpy(
-                    reinterpret_cast<void*>(d_vertices),
+                    reinterpret_cast<void*>(m_d_vertices),
                     vertices.data(),
                     vertices_size,
                     cudaMemcpyHostToDevice
@@ -131,7 +131,7 @@ namespace rob {
         }
 
         m_build_input.triangleArray.numVertices = vertices_size;
-        m_build_input.triangleArray.vertexBuffers = &d_vertices;
+        m_build_input.triangleArray.vertexBuffers = &m_d_vertices;
         m_build_input.triangleArray.flags = build_input_flags;
         m_build_input.triangleArray.numSbtRecords = 1;
 

@@ -118,13 +118,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\me\Documents\source_code\SDL2-2.0.22\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\renni\Documents\source_code\SDL2-2.0.22\include;C:\Users\me\Documents\source_code\SDL2-2.0.22\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>nvrtc.lib;SDL2.lib;SDL2main.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\me\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\renni\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;C:\Users\me\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <FastMath>false</FastMath>
@@ -140,7 +140,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\me\Documents\source_code\SDL2-2.0.22\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\renni\Documents\source_code\SDL2-2.0.22\include;C:\Users\me\Documents\source_code\SDL2-2.0.22\include;C:\ProgramData\NVIDIA Corporation\OptiX SDK 7.4.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,7 +148,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>nvrtc.lib;SDL2.lib;SDL2main.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\me\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\renni\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;C:\Users\me\Documents\source_code\SDL2-2.0.22\VisualC\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <FastMath>false</FastMath>
@@ -166,6 +166,7 @@
     <ClInclude Include="KHR\khrplatform.h" />
     <ClInclude Include="launch_params.h" />
     <ClInclude Include="ptx_loader.h" />
+    <ClInclude Include="rob_opengl.h" />
     <ClInclude Include="rob_optix.h" />
     <ClInclude Include="rob_sdl.h" />
     <ClInclude Include="sbt_record.h" />

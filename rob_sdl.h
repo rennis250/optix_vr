@@ -38,18 +38,20 @@ namespace rob {
 			exit(1);
 		}
 
-		SDL_GL_LoadLibrary(NULL); // Default OpenGL is fine.
+		// Default OpenGL is fine.
+		SDL_GL_LoadLibrary(NULL);
 		
 		// Request an OpenGL 4.5 context (should be core)
+		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
 		SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 		SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
 		SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
 		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		
 		m_window = SDL_CreateWindow("SDL2 Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_width, m_height, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 		if (!m_window) {
@@ -104,16 +106,11 @@ namespace rob {
 	}
 
 	void SDLApp::clearScreen() {
-		// SDL_SetRenderDrawColor(m_renderer, 96, 128, 255, 255);
-		// SDL_RenderClear(m_renderer);
-
 		glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
 	void SDLApp::drawScene() {
-		// SDL_RenderPresent(m_renderer);
-
 		SDL_GL_SwapWindow(m_window);
 	}
 }
