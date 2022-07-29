@@ -9,31 +9,38 @@
 namespace rob {
 	class Mesh {
 	public:
-		void make_cube(float3 center, float3 size, float3 albedo);
+		void make_cube(float3 center, float3 size, float3 albedo, int mat);
 		std::vector<float3> get_vertices();
 		std::vector<int3> get_indices();
 		float3 get_albedo();
+		int get_mats();
 
 	private:
 		std::vector<float3> m_vertices;
 		std::vector<int3> m_indices;
 		float3 m_albedo;
+		int m_mats;
 	};
 
 	std::vector<float3> Mesh::get_vertices() {
 		return m_vertices;
 	}
-	
+
 	std::vector<int3> Mesh::get_indices() {
 		return m_indices;
 	}
-	
+
 	float3 Mesh::get_albedo() {
 		return m_albedo;
 	}
 
-	void Mesh::make_cube(float3 center, float3 size, float3 albedo) {
+	int Mesh::get_mats() {
+		return m_mats;
+	}
+
+	void Mesh::make_cube(float3 center, float3 size, float3 albedo, int mat) {
 		m_albedo = albedo;
+		m_mats = mat;
 
 		float3 p = center - 0.5f * size;
 		float3 coor = p + size;

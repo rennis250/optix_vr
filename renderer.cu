@@ -145,15 +145,11 @@ extern "C" __global__ void __closesthit__ch() {
     // Which triangle did we intercept
     const int prim_idx = optixGetPrimitiveIndex();
         
-    // When I have data packed into the hitgroup SBT, then this is how we get
-    // the vertices of the intersected triangle
+    // This is how we get the vertices of the intersected triangle
     const int3 ind = sbtData.indices[prim_idx];
     const float3 v0 = sbtData.vertices[ind.x];
     const float3 v1 = sbtData.vertices[ind.y];
     const float3 v2 = sbtData.vertices[ind.z];
-    // const float3 v0 = make_float3(-0.5f, -0.5f, 0.0f);
-    // const float3 v1 = make_float3(0.5f, -0.5f, 0.0f);
-    // const float3 v2 = make_float3(0.0f, 0.5f, 0.0f);
 
     // standard trick for getting the normal of the intersected triangle
     const float3 nor_0 = normalize(cross(v1 - v0, v2 - v0));
@@ -170,10 +166,8 @@ extern "C" __global__ void __closesthit__ch() {
     surfelX->t = t;
     surfelX->position = optixGetWorldRayOrigin() + t * ray_dir;
     surfelX->shadingNormal = nor;
-    // surfelX->albedo = make_float3(1.0, 1.0, 1.0);
 
     // surfelX->mat = getMaterial(TEXTURE, surfelX->position, surfelX->shadingNormal);
-    // surfelX->albedo = make_float3(barycentrics.x, barycentrics.y, 1.0f);
     surfelX->albedo = sbtData.albedo;
 }
 

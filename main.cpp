@@ -41,16 +41,18 @@ int main(int argc, char* argv[]) {
 	
 	float3 center = make_float3(0.5, 0.5, -0.5);
 	float3 size = make_float3(0.5, 1.0, 1.0);
-	float3 color = make_float3(0.5, 0.5, 0.5);
-	meshes[0].make_cube(center, size, color);
+	float3 color = make_float3(0.8, 0.1, 0.1);
+	int mat = 0;
+	meshes[0].make_cube(center, size, color, mat);
 
 	center = make_float3(0.0, 0.0, 0.0);
 	size = make_float3(100.0, 0.1, 100.0);
-	color = make_float3(0.8, 0.1, 0.5);
-	meshes[1].make_cube(center, size, color);
+	color = make_float3(0.5, 0.5, 0.5);
+	mat = 1;
+	meshes[1].make_cube(center, size, color, mat);
 
 	optState.build_shape(meshes);
-	// optState.setup_gas();
+	optState.setup_gas();
 	optState.create_module();
 
 	optState.generate_program_group("__raygen__rg", OPTIX_PROGRAM_GROUP_KIND_RAYGEN);
