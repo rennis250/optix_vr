@@ -15,35 +15,6 @@ __forceinline__ __device__ float3 clamp(const float3& v, const float a, const fl
     return make_float3(clamp(v.x, a, b), clamp(v.y, a, b), clamp(v.z, a, b));
 }
 
-__forceinline__ __device__ float3 toSRGB(const float3& c)
-{
-    float  invGamma = 1.0f / 2.4f;
-    float3 powed = make_float3(powf(c.x, invGamma), powf(c.y, invGamma), powf(c.z, invGamma));
-    return make_float3(
-        c.x < 0.0031308f ? 12.92f * c.x : 1.055f * powed.x - 0.055f,
-        c.y < 0.0031308f ? 12.92f * c.y : 1.055f * powed.y - 0.055f,
-        c.z < 0.0031308f ? 12.92f * c.z : 1.055f * powed.z - 0.055f);
-}
-
-__forceinline__ __device__ unsigned char quantizeUnsigned8Bits(float x)
-{
-    x = clamp(x, 0.0f, 1.0f);
-    enum { N = (1 << 8) - 1, Np1 = (1 << 8) };
-    return (unsigned char)min((unsigned int)(x * (float)Np1), (unsigned int)N);
-}
-
-__forceinline__ __device__ uchar4 make_color(const float3& c)
-{
-    // first apply gamma, then convert to unsigned char
-    float3 srgb = toSRGB(clamp(c, 0.0f, 1.0f));
-    return make_uchar4(quantizeUnsigned8Bits(srgb.x), quantizeUnsigned8Bits(srgb.y), quantizeUnsigned8Bits(srgb.z), 255u);
-}
-
-__forceinline__ __device__ uchar4 make_color(const float4& c)
-{
-    return make_color(make_float3(c.x, c.y, c.z));
-}
-
 inline __both__ float3 operator+(const float3& v1, const float3& v2)
 {
     return make_float3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
@@ -106,3 +77,50 @@ inline __both__ float3 normalize(const float3 v)
     float l = 1.0 / len(v);
     return make_float3(v.x * l, v.y * l, v.z * l);
 }
+
+inline __both__ float3 reflect(const float3 v, const float3 n) {
+    return v - 2.0 * dot(v, n) * n;
+}
+
+inline float3 set_face_normal(const float3 ray_direction, const float3 outward_normal) {
+    bool front_face = dot(ray_direction, outward_normal) < 0;
+    return front_face ? outward_normal : -1.0 * outward_normal;
+}
+
+// ONB stuff
+
+struct mat3 {
+    float3 nn;
+    float3 o1;
+    float3 o2;
+};
+
+__device__ float3 ortho(float3 v) {
+    return fabsf(v.x) > fabsf(v.z) ? make_float3(-v.y, v.x, 0.0) : make_float3(0.0, -v.z, v.y);
+}
+
+__device__ mat3 ONB(float3 n) {
+    mat3 onb;
+    onb.nn = normalize(n);
+    onb.o1 = normalize(ortho(onb.nn));
+    onb.o2 = normalize(cross(onb.o1, onb.nn));
+
+    return onb;
+}
+
+__device__ mat3 transpose(mat3 onb) {
+    mat3 onbt;
+
+    onbt.nn = make_float3(onb.nn.x, onb.o1.x, onb.o2.x);
+
+    onbt.o1 = make_float3(onb.nn.y, onb.o1.y, onb.o2.y);
+
+    onbt.o2 = make_float3(onb.nn.z, onb.o1.z, onb.o2.z);
+
+    return onbt;
+}
+
+__device__ float3 apply_onb(mat3 onb, float3 v) {
+    return v.x * onb.o1 + v.y * onb.nn + v.z * onb.o2;
+}
+

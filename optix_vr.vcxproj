@@ -160,16 +160,21 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="color.h" />
     <ClInclude Include="cuda_buffer.h" />
     <ClInclude Include="exceptions.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="KHR\khrplatform.h" />
     <ClInclude Include="launch_params.h" />
+    <ClInclude Include="materials.h" />
+    <ClInclude Include="rob_mesh.h" />
     <ClInclude Include="ptx_loader.h" />
+    <ClInclude Include="rand.h" />
     <ClInclude Include="rob_opengl.h" />
     <ClInclude Include="rob_optix.h" />
     <ClInclude Include="rob_sdl.h" />
     <ClInclude Include="sbt_record.h" />
+    <ClInclude Include="surfel.h" />
     <ClInclude Include="vec.h" />
   </ItemGroup>
   <ItemGroup>

@@ -45,3 +45,16 @@
             throw std::runtime_error( ss.str().c_str() );                        \
         }                                                                      \
     } while( 0 )
+
+
+
+#define CUDA_SYNC_CHECK()                                               \
+  {                                                                     \
+    cudaDeviceSynchronize();                                            \
+    cudaError_t error = cudaGetLastError();                             \
+    if( error != cudaSuccess )                                          \
+    {                                                                 \
+        fprintf( stderr, "error (%s: line %d): %s\n", __FILE__, __LINE__, cudaGetErrorString( error ) ); \
+        exit( 2 );                                                      \
+    }                                                                 \
+  }

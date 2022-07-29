@@ -16,7 +16,9 @@ struct RayGenData {
 };
 
 struct HitGroupData {
-    // No data needed
+    float3 albedo;
+    float3* vertices;
+    int3* indices;
 };
 
 struct MissData {

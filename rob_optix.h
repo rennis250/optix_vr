@@ -10,6 +10,7 @@
 #include "exceptions.h"
 #include "launch_params.h"
 #include "sbt_record.h"
+#include "rob_mesh.h"
 
 #include <vector>
 #include <iostream>
@@ -21,14 +22,15 @@ namespace rob {
         OptixState();
         ~OptixState();
 
-        void build_shape(std::vector<float3> vertices);
+        void build_shape(std::vector<Mesh> mesh);
         void setup_gas();
         void create_module();
         void generate_program_group(const char* func_name, OptixProgramGroupKind prog_kind);
         void create_pipeline();
         void allocate_record(RayGenSbtRecord& sbt);
         void allocate_record(MissSbtRecord& sbt);
-        void allocate_record(HitGroupSbtRecord& sbt);
+        // void allocate_record(HitGroupSbtRecord& sbt);
+        void allocate_hg_records();
         void build_sbt();
         void upload_params(Params params);
         void render();
@@ -48,7 +50,8 @@ namespace rob {
         OptixProgramGroupOptions m_program_group_options = {};
         OptixPipelineLinkOptions m_pipeline_link_options = {};
 
-        OptixBuildInput m_build_input = {};
+        std::vector<OptixBuildInput> m_build_inputs;
+        std::vector<uint32_t> m_build_input_flags;
 
         OptixAccelBufferSizes m_gas_buffer_sizes = {};
         OptixTraversableHandle m_gas_handle = 0;
@@ -56,7 +59,8 @@ namespace rob {
         CUdeviceptr m_temp_buffer_gas = 0;
         CUdeviceptr m_gas_output_buffer = 0;
         CUdeviceptr m_d_param = 0;
-        CUdeviceptr m_d_vertices = 0;
+        std::vector<CUdeviceptr> m_d_vertices;
+        std::vector<CUdeviceptr> m_d_indices;
 
         // std::vector<OptixProgramGroup> m_program_groups;
         OptixProgramGroup m_program_groups[3] = { };
@@ -68,7 +72,11 @@ namespace rob {
         CUdeviceptr m_rg_record;
         CUdeviceptr m_hg_record;
 
+        std::vector<HitGroupSbtRecord> m_hg_sbts;
+
         Params m_params;
+
+        std::vector<Mesh> m_meshes;
     };
 
     template<typename T>
@@ -99,41 +107,151 @@ namespace rob {
     }
 
     template<typename T>
-    void OptixState<T>::build_shape(std::vector<float3> vertices) {
+    void OptixState<T>::build_shape(std::vector<Mesh> meshes) {
         // Populate the build input struct with our triangle data as well as
         // information about the sizes and types of our data
-        const uint32_t build_input_flags[1] = { OPTIX_GEOMETRY_FLAG_NONE };
-        
-        m_build_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-        m_build_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+        m_build_inputs.resize(meshes.size());
+        m_d_vertices.resize(meshes.size());
+        m_d_indices.resize(meshes.size());
+        m_build_input_flags.resize(meshes.size());
 
-        // Allocate and copy device memory for our input triangle vertices
-        const size_t vertices_size = sizeof(float3) * vertices.size();
+        m_meshes = meshes;
+
+        for (int meshID = 0; meshID < m_meshes.size(); meshID++) {
+            m_build_inputs[meshID] = {};
+            m_build_inputs[meshID].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+
+            // Allocate and copy device memory for our input triangle vertices
+            std::vector<float3> vertices = m_meshes[meshID].get_vertices();
+            const size_t vertices_size = sizeof(float3) * vertices.size();
+            try {
+                CUDA_CHECK(
+                    cudaMalloc(
+                        reinterpret_cast<void**>(&m_d_vertices[meshID]),
+                        vertices_size
+                    )
+                );
+                CUDA_CHECK(
+                    cudaMemcpy(
+                        reinterpret_cast<void*>(m_d_vertices[meshID]),
+                        vertices.data(),
+                        vertices_size,
+                        cudaMemcpyHostToDevice
+                    )
+                );
+
+                CUDA_SYNC_CHECK();
+            }
+            catch (std::exception& e)
+            {
+                std::cerr << "Optix error: " << e.what() << std::endl;
+            }
+
+            m_build_input_flags[meshID] = OPTIX_GEOMETRY_FLAG_NONE;
+            m_build_inputs[meshID].triangleArray.flags = &m_build_input_flags[meshID];
+
+            m_build_inputs[meshID].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+            m_build_inputs[meshID].triangleArray.numVertices = (int)vertices_size;
+            m_build_inputs[meshID].triangleArray.vertexBuffers = &m_d_vertices[meshID];
+            m_build_inputs[meshID].triangleArray.vertexStrideInBytes = sizeof(float3);
+
+            // Allocate and copy device memory for our indices that link the
+            // vertices into the final triangles
+            std::vector<int3> indices = m_meshes[meshID].get_indices();
+            const size_t indices_size = sizeof(int3) * indices.size();
+            try {
+                CUDA_CHECK(
+                    cudaMalloc(
+                        reinterpret_cast<void**>(&m_d_indices[meshID]),
+                        indices_size
+                    )
+                );
+                CUDA_CHECK(
+                    cudaMemcpy(
+                        reinterpret_cast<void*>(m_d_indices[meshID]),
+                        indices.data(),
+                        indices_size,
+                        cudaMemcpyHostToDevice
+                    )
+                );
+
+                CUDA_SYNC_CHECK();
+            }
+            catch (std::exception& e)
+            {
+                std::cerr << "Optix error: " << e.what() << std::endl;
+            }
+
+            m_build_inputs[meshID].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+            m_build_inputs[meshID].triangleArray.indexStrideInBytes = sizeof(int3);
+            m_build_inputs[meshID].triangleArray.numIndexTriplets = (int)indices_size;
+            m_build_inputs[meshID].triangleArray.indexBuffer = m_d_indices[meshID];
+            
+            m_build_inputs[meshID].triangleArray.numSbtRecords = 1;
+            m_build_inputs[meshID].triangleArray.sbtIndexOffsetBuffer = 0;
+            m_build_inputs[meshID].triangleArray.sbtIndexOffsetSizeInBytes = 0;
+            m_build_inputs[meshID].triangleArray.sbtIndexOffsetStrideInBytes = 0;
+        }
+
         try {
-            CUDA_CHECK(
-                cudaMalloc(
-                    reinterpret_cast<void**>(&m_d_vertices),
-                    vertices_size
+            OPTIX_CHECK(
+                optixAccelComputeMemoryUsage(
+                    m_optCtx,         // The device context we are using
+                    &m_accel_options,
+                    m_build_inputs.data(), // Describes our geometry
+                    (int)m_build_inputs.size(),               // Number of build inputs, could have multiple
+                    &m_gas_buffer_sizes
                 )
             );
+
+            CUDA_SYNC_CHECK();
+
             CUDA_CHECK(
-                cudaMemcpy(
-                    reinterpret_cast<void*>(m_d_vertices),
-                    vertices.data(),
-                    vertices_size,
-                    cudaMemcpyHostToDevice
+                cudaMalloc(
+                    reinterpret_cast<void**>(&m_temp_buffer_gas),
+                    m_gas_buffer_sizes.tempSizeInBytes
                 )
+            );
+
+            CUDA_SYNC_CHECK();
+
+            CUDA_CHECK(
+                cudaMalloc(
+                    reinterpret_cast<void**>(&m_gas_output_buffer),
+                    m_gas_buffer_sizes.outputSizeInBytes
+                )
+            );
+
+            CUDA_SYNC_CHECK();
+
+            OPTIX_CHECK(
+                optixAccelBuild(
+                    m_optCtx,
+                    0,           // CUDA stream
+                    &m_accel_options,
+                    m_build_inputs.data(),
+                    (int)m_meshes.size(),           // num build inputs
+                    m_temp_buffer_gas,
+                    m_gas_buffer_sizes.tempSizeInBytes,
+                    m_gas_output_buffer,
+                    m_gas_buffer_sizes.outputSizeInBytes,
+                    &m_gas_handle, // Output handle to the struct
+                    nullptr,     // emitted property list
+                    0 // num emitted properties
+                )
+            );
+
+            CUDA_SYNC_CHECK();
+
+            // We can now free scratch space used during the build
+            CUDA_CHECK(
+                cudaFree(reinterpret_cast<void*>(m_temp_buffer_gas))
             );
         }
         catch (std::exception& e)
         {
             std::cerr << "Optix error: " << e.what() << std::endl;
         }
-
-        m_build_input.triangleArray.numVertices = vertices_size;
-        m_build_input.triangleArray.vertexBuffers = &m_d_vertices;
-        m_build_input.triangleArray.flags = build_input_flags;
-        m_build_input.triangleArray.numSbtRecords = 1;
 
         return;
     }
@@ -146,8 +264,8 @@ namespace rob {
                 optixAccelComputeMemoryUsage(
                     m_optCtx,         // The device context we are using
                     &m_accel_options,
-                    &m_build_input, // Describes our geometry
-                    1,               // Number of build inputs, could have multiple
+                    m_build_inputs.data(), // Describes our geometry
+                    (int)m_build_inputs.size(),               // Number of build inputs, could have multiple
                     &m_gas_buffer_sizes
                 )
             );
@@ -171,8 +289,8 @@ namespace rob {
                     m_optCtx,
                     0,           // CUDA stream
                     &m_accel_options,
-                    &m_build_input,
-                    1,           // num build inputs
+                    m_build_inputs.data(),
+                    (int)m_build_inputs.size(),           // num build inputs
                     m_temp_buffer_gas,
                     m_gas_buffer_sizes.tempSizeInBytes,
                     m_gas_output_buffer,
@@ -193,6 +311,8 @@ namespace rob {
             std::cerr << "Optix error: " << e.what() << std::endl;
         }
 
+        std::cout << m_build_inputs.data() << std::endl;
+
         return;
     }
 
@@ -204,7 +324,7 @@ namespace rob {
             m_pipeline_compile_options.pipelineLaunchParamsVariableName = "params";
 
             // Our device code uses 3 payload registers (r,g,b output value)
-            m_pipeline_compile_options.numPayloadValues = 3;
+            m_pipeline_compile_options.numPayloadValues = 2;
         
             char olog[2048];
             size_t sizeof_olog = sizeof(olog);
@@ -309,7 +429,7 @@ namespace rob {
     template<typename T>
     void OptixState<T>::create_pipeline() {
         try {
-            m_pipeline_link_options.maxTraceDepth = 1;
+            m_pipeline_link_options.maxTraceDepth = 2;
             m_pipeline_link_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
         
             char olog[2048];
@@ -401,9 +521,21 @@ namespace rob {
     }
 
     template <typename T>
-    void OptixState<T>::allocate_record(HitGroupSbtRecord& sbt) {
+    void OptixState<T>::allocate_hg_records() {
         try {
-            size_t record_size = sizeof(HitGroupSbtRecord);
+            m_hg_sbts.resize(m_meshes.size());
+            for (int meshID = 0; meshID < m_meshes.size(); meshID++) {
+                HitGroupSbtRecord sbt = {};
+                OPTIX_CHECK(optixSbtRecordPackHeader(m_hitgroup_prog_group, &sbt));
+                    
+                sbt.data.albedo = m_meshes[meshID].get_albedo();
+                sbt.data.vertices = (float3*)m_d_vertices[meshID];
+                sbt.data.indices = (int3*)m_d_indices[meshID];
+
+                m_hg_sbts[meshID] = sbt;
+            }
+
+            size_t record_size = sizeof(HitGroupSbtRecord) * m_hg_sbts.size();
             CUDA_CHECK(
                 cudaMalloc(
                     reinterpret_cast<void**>(&m_hg_record),
@@ -411,12 +543,10 @@ namespace rob {
                 )
             );
 
-            OPTIX_CHECK( optixSbtRecordPackHeader(m_hitgroup_prog_group, &sbt) );
-
             CUDA_CHECK(
                 cudaMemcpy(
                     reinterpret_cast<void*>(m_hg_record),
-                    &sbt,
+                    m_hg_sbts.data(),
                     record_size,
                     cudaMemcpyHostToDevice
                 )
@@ -438,7 +568,7 @@ namespace rob {
         m_sbt.missRecordCount = 1;
         m_sbt.hitgroupRecordBase = m_hg_record;
         m_sbt.hitgroupRecordStrideInBytes = sizeof(HitGroupSbtRecord);
-        m_sbt.hitgroupRecordCount = 1;
+        m_sbt.hitgroupRecordCount = (int)m_hg_sbts.size();
 
         return;
     }
