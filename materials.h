@@ -36,7 +36,7 @@ float2 ConcentricSampleDisk(unsigned int &seed) {
     return make_float2(r * cosf(theta), r * sinf(theta));
 }
 
-float3 cosWeightHemi(unsigned int seed) {
+float3 cosWeightHemi(unsigned int &seed) {
     float2 d = ConcentricSampleDisk(seed);
     float z = sqrtf(max(0.0, 1.0 - d.x * d.x - d.y * d.y));
     return make_float3(d.x, z, d.y);
@@ -74,13 +74,11 @@ __device__ float3 finiteScatteringDensity(Surfel &surfelX, float3 woW, float &et
     mat3 ltow = ONB(n);
     mat3 wtol = transpose(ltow);
 
-    unsigned int seed = surfelX.seed;
-
     // if (mat.type == LAMB) {
-        surfelX.wi = apply_onb(ltow, cosWeightHemi(seed));
+        surfelX.wi = apply_onb(ltow, cosWeightHemi(surfelX.seed));
         if (dot(surfelX.wi, n) > 0.0 && dot(woW, n) > 0.0) {
             surfelX.position = surfelX.position + n * EPS;
-            pdf = fabsf(dot(surfelX.wi, n)) * InvPi;
+            pdf = fabs(dot(surfelX.wi, n)) * InvPi;
             return surfelX.albedo * InvPi;
         } else {
             pdf = 0.0;

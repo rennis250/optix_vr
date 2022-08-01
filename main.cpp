@@ -37,6 +37,9 @@ int main(int argc, char* argv[]) {
 	std::vector<uchar4> m_host_pixels;
 	m_host_pixels.resize(width * height);
 
+	rob::Model model;
+	model.load();
+
 	std::vector<rob::Mesh> meshes(2);
 	
 	float3 center = make_float3(0.5, 0.5, -0.5);
@@ -51,7 +54,7 @@ int main(int argc, char* argv[]) {
 	mat = 1;
 	meshes[1].make_cube(center, size, color, mat);
 
-	optState.build_shape(meshes);
+	optState.build_shape(model.get_meshes());
 	optState.setup_gas();
 	optState.create_module();
 
@@ -72,14 +75,16 @@ int main(int argc, char* argv[]) {
 
 	optState.build_sbt();
 
-	// auto d_image = rob::CudaBuffer<uchar4>(width, height);
-
 	// Populate the per-launch params
 	Params params;
-	// params.image = d_image.get_device_ptr();
 	params.image_width = width;
 	params.image_height = height;
-	params.cam_eye = make_float3(0.0f, 1.5f, 2.0f);
+	// params.cam_eye = make_float3(0.0f, 1.5f, 2.0f);
+	params.cam_eye = make_float3(-1293.07f, 154.681f, -0.7304f);
+	// params.cam_u = make_float3(1.0f, 0.0f, 0.0f);
+	// params.cam_v = make_float3(0.0f, 1.0f, 0.0f);
+	// params.cam_w = make_float3(0.0f, 0.0f, -2.0f);
+
 	params.cam_u = make_float3(1.0f, 0.0f, 0.0f);
 	params.cam_v = make_float3(0.0f, 1.0f, 0.0f);
 	params.cam_w = make_float3(0.0f, 0.0f, -2.0f);
@@ -105,12 +110,26 @@ int main(int argc, char* argv[]) {
 	}
 	params.image = gl_image;
 
-	optState.upload_params(params);
+	int x, y;
+	while (1) {
+		sdlApp.clearScreen();
+		sdlApp.registerInput(x, y);
 
-	optState.render();
+		// params.cam_eye = make_float3(
+			// static_cast<float>(x)/static_cast<float>(width) + 0.5,
+			// static_cast<float>(y)/static_cast<float>(height) + 0.5,
+			// 2.0f
+		// );
+		
+		optState.upload_params(params);
+		optState.render();
 
-	// d_image.download();
-	// std::vector<uchar4> host_pixels = d_image.get_host_data();
+		glState.draw();
+
+		sdlApp.drawScene();
+
+		SDL_Delay(16);
+	}
 
 	try {
 		CUDA_CHECK(
@@ -124,33 +143,6 @@ int main(int argc, char* argv[]) {
 	catch (std::exception& e)
 	{
 		std::cerr << "Optix error: " << e.what() << std::endl;
-	}
-
-	// Output FB as Image
-	/*std::ofstream MyFile("test.ppm");
-	MyFile << "P3\n" << width << " " << height << "\n255\n";
-	for (int j = (int)height - 1; j >= 0; j--) {
-		for (int i = 0; i < (int)width; i++) {
-			size_t pixel_index = j * (size_t)width + i;
-
-			int ir = static_cast<int>(host_pixels[pixel_index].x);
-			int ig = static_cast<int>(host_pixels[pixel_index].y);
-			int ib = static_cast<int>(host_pixels[pixel_index].z);
-
-			MyFile << ir << " " << ig << " " << ib << "\n";
-		}
-	}
-	MyFile.close();*/
-
-	while (1) {
-		sdlApp.clearScreen();
-		sdlApp.registerInput();
-
-		glState.draw();
-
-		sdlApp.drawScene();
-
-		SDL_Delay(16);
 	}
 
 	return 0;

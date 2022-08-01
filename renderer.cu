@@ -8,20 +8,26 @@
 #include "color.h"
 #include "materials.h"
 
+// for this simple example, we have a single ray type
+enum { SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT };
+
 extern "C" {
     __constant__ Params params;
 }
 
-__device__ void computeRay(uint3 idx, uint3 dim, float3& origin, float3& direction)
+__device__ void computeRay(uint3 idx, uint3 dim, float3& origin, float3& direction, unsigned int seed)
 {
     float3 U = params.cam_u;
     float3 V = params.cam_v;
     float3 W = params.cam_w;
 
+    // The center of each pixel is at fraction (0.5,0.5)
+    const float2 subpixel_jitter = make_float2(rnd(seed), rnd(seed));
+
     // Normalizing coordinates to [-1.0, 1.0]
     float3 d = 2.0f * make_float3(
-        static_cast<float>(idx.x) / static_cast<float>(dim.x),
-        static_cast<float>(idx.y) / static_cast<float>(dim.y),
+        (static_cast<float>(idx.x) + subpixel_jitter.x) / static_cast<float>(dim.x),
+        (static_cast<float>(idx.y) + subpixel_jitter.y) / static_cast<float>(dim.y),
         0.0f
     ) - 1.0f;
 
@@ -31,28 +37,7 @@ __device__ void computeRay(uint3 idx, uint3 dim, float3& origin, float3& directi
     return;
 }
 
-extern "C" __global__ void __raygen__rg() {
-    // Lookup our location within the launch grid
-    const uint3 idx = optixGetLaunchIndex();
-    const uint3 dim = optixGetLaunchDimensions();
-
-    // this puts the pointer value for the surfel
-    // into two uints so that they can go into
-    // the payload portion of optixTrace,
-    // where they are reconstructed into the
-    // pointer itself (tricky, but cool!)
-    unsigned int p0, p1;
-    Surfel surfelY;
-    packPointer(&surfelY, p0, p1);
-
-    surfelY.seed = tea<4>(idx.y * params.image_width + idx.x, 250);
-
-    // Map our launch idx to a screen location and create a ray from 
-    // the camera location through the screen
-    float3 X;
-    computeRay(idx, dim, X, surfelY.wi);
-    float3 X_for_vignette = X;
-
+__device__ float3 L_i(Surfel &surfelY, float3 ray_origin, float3 ray_dir, unsigned int p0, unsigned int p1) {
     float3 L = make_float3(0.0, 0.0, 0.0);
     float3 beta = make_float3(1.0, 1.0, 1.0);
     float pdf = 0.0;
@@ -60,11 +45,11 @@ extern "C" __global__ void __raygen__rg() {
     float eta_for_RR = 0.0;
     float etaScale = 0.0;
 
+    float3 X = ray_origin;
+    surfelY.wi = ray_dir;
+
     int nbounces = 10;
     for (int i = 0; i < nbounces; i++) {
-        // Trace the ray against our scene hierarchy.
-        // optixTrace is basically the following function
-        // from the WebXR version: findFirstIntersection
         optixTrace(
             params.handle,
             X,
@@ -73,15 +58,15 @@ extern "C" __global__ void __raygen__rg() {
             1e16f,  // Max intersection distance
             0.0f,   // ray-time -- used for motion blur
             OptixVisibilityMask(255), // Specify always visible
-            OPTIX_RAY_FLAG_NONE,
-            0,      // SBT offset -- See SBT discussion
-            0,      // SBT stride -- See SBT discussion 
-            0,      // missSBTIndex -- See SBT discussion
+            OPTIX_RAY_FLAG_DISABLE_ANYHIT,
+            SURFACE_RAY_TYPE,      // SBT offset -- See SBT discussion
+            RAY_TYPE_COUNT,      // SBT stride -- See SBT discussion 
+            SURFACE_RAY_TYPE,      // missSBTIndex -- See SBT discussion
             p0, p1); // These 32b values are the ray payload
 
         if (surfelY.hit) {
             wo = -1.0 * surfelY.wi;
-            
+
             // L = L + beta * emittedRadiance(surfelY, wo);
 
             fr = finiteScatteringDensity(surfelY, wo, eta_for_RR, pdf);
@@ -106,41 +91,64 @@ extern "C" __global__ void __raygen__rg() {
             if (maxRR < 1.0 && i > 3) {
                 float q = max(0.05, 1.0 - maxRR);
                 if (rnd(surfelY.seed) < q) {
-                   break;
+                    break;
                 }
                 beta = beta / (1.0 - q);
             }
-        } else {
+        }
+        else {
             L = L + beta * skyColor(surfelY.wi);
             break;
         }
     }
 
-    // float col = spect_to_rgb(L);
-    float3 col = L;
-    // col *= oneOverSPP;
-    col = clamp(col, 0.0, 1000.0); // prevent NaN and Inf
+    return L;
+}
 
-    // vignetting
-    // float3 p = X_for_vignette;
-    // col = col * (0.5 + 0.5 * powf(16.0 * p.x * p.y * (1.0 - p.x) * (1.0 - p.y), 0.3));
+extern "C" __global__ void __raygen__rg() {
+    // Lookup our location within the launch grid
+    const uint3 idx = optixGetLaunchIndex();
+    const uint3 dim = optixGetLaunchDimensions();
+    
+    unsigned int p0, p1;
+    Surfel surfelY;
+    packPointer(&surfelY, p0, p1);
 
-    // Record results in our output raster
-    // params.image[idx.y * params.image_width + idx.x] = make_color(reinhardTonemap(col, 0.8, 0.1));
-    params.image[idx.y * params.image_width + idx.x] = make_color(col);
+    surfelY.seed = tea<4>(idx.y * params.image_width + idx.x, 250);
+
+    float3 L = make_float3(0.0, 0.0, 0.0);
+
+    float3 ray_origin;
+    float3 ray_dir;
+
+    int NSAMPLES = 50;
+
+    float3 uv = make_float3(
+        static_cast<float>(idx.x) / static_cast<float>(dim.x) - 0.5,
+        static_cast<float>(idx.y) / static_cast<float>(dim.y) - 0.5,
+        0.0f
+    );
+
+    int nsamps = int(1.0 / (1.0 + 0.5 * sqrtf(dot(uv, uv))) * float(NSAMPLES));
+    float oneOverSPP = 1.0 / float(nsamps);
+    float strataSize = oneOverSPP;
+    for (int i = 0; i < nsamps; i++) {
+        computeRay(idx, dim, ray_origin, ray_dir, surfelY.seed);
+        L = L + L_i(surfelY, ray_origin, ray_dir, p0, p1);
+    }
+
+    L.x = L.x * oneOverSPP;
+    L.y = L.y * oneOverSPP;
+    L.z = L.z * oneOverSPP;
+
+    params.image[idx.y * params.image_width + idx.x] = make_color(L);
 }
 
 extern "C" __global__ void __closesthit__ch() {
-    const HitGroupData& sbtData
-        = *(const HitGroupData*)optixGetSbtDataPointer();
-
-    // When built-in triangle intersection is used, a number of fundamental 
-    // attributes are provided by the OptiX API, including barycentric 
-    // coordinates.
-    const float2 barycentrics = optixGetTriangleBarycentrics();
-
-    // What is the direction of the ray at intersection
-    const float3 ray_dir = optixGetWorldRayDirection();
+    const HitGroupData& sbtData = *(const HitGroupData*)optixGetSbtDataPointer();
+    
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
 
     // Which triangle did we intercept
     const int prim_idx = optixGetPrimitiveIndex();
@@ -153,27 +161,24 @@ extern "C" __global__ void __closesthit__ch() {
 
     // standard trick for getting the normal of the intersected triangle
     const float3 nor_0 = normalize(cross(v1 - v0, v2 - v0));
+    
+    const float3 ray_dir = optixGetWorldRayDirection();
 
     // Make sure the normal is not pointing inward
     // code from RTIOW
     const float3 nor = set_face_normal(ray_dir, nor_0);
 
-    Surfel* surfelX = unpackSurfel();
+    Surfel* surfelY = unpackSurfel();
 
-    surfelX->hit = true;
-    surfelX->wi = ray_dir;
+    surfelY->hit = true;
     float t = optixGetRayTmax();
-    surfelX->t = t;
-    surfelX->position = optixGetWorldRayOrigin() + t * ray_dir;
-    surfelX->shadingNormal = nor;
-
-    // surfelX->mat = getMaterial(TEXTURE, surfelX->position, surfelX->shadingNormal);
-    surfelX->albedo = sbtData.albedo;
+    surfelY->t = t;
+    surfelY->position = optixGetWorldRayOrigin() + t * ray_dir;
+    surfelY->shadingNormal = nor;
+    surfelY->albedo = sbtData.albedo;
 }
 
 extern "C" __global__ void __miss__ms() {
-    // MissData* miss_data = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
-    
     const float3 ray_dir = optixGetWorldRayDirection();
 
     Surfel* surfelX = unpackSurfel();

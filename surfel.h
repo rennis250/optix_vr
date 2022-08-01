@@ -14,12 +14,6 @@ struct Surfel {
     int mat;
     bool hit;
     unsigned int seed;
-
-    // float pdf;
-    // float3 L;
-    // float3 beta;
-    // float3 fr;
-    // float3 wo;
 };
 
 static __forceinline__ __device__ void packPointer(void* ptr, unsigned int& p0, unsigned int& p1) {

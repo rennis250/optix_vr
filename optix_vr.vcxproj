@@ -175,6 +175,7 @@
     <ClInclude Include="rob_sdl.h" />
     <ClInclude Include="sbt_record.h" />
     <ClInclude Include="surfel.h" />
+    <ClInclude Include="tiny_obj_loader.h" />
     <ClInclude Include="vec.h" />
   </ItemGroup>
   <ItemGroup>

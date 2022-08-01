@@ -248,6 +248,7 @@ namespace rob {
 			m_pipeline_compile_options.pipelineLaunchParamsVariableName = "params";
 
 			m_pipeline_compile_options.numPayloadValues = 2;
+			m_pipeline_compile_options.numAttributeValues = 2;
 
 			char olog[2048];
 			size_t sizeof_olog = sizeof(olog);
@@ -452,6 +453,9 @@ namespace rob {
 				OPTIX_CHECK(optixSbtRecordPackHeader(m_hitgroup_prog_group, &sbt));
 
 				sbt.data.albedo = m_meshes[meshID].get_albedo();
+
+				std::cout << sbt.data.albedo.x << ", " << sbt.data.albedo.y << ", " << sbt.data.albedo.z << std::endl;
+
 				sbt.data.vertices = (float3*)m_d_vertices[meshID];
 				sbt.data.indices = (int3*)m_d_indices[meshID];
 

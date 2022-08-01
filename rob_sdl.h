@@ -16,7 +16,7 @@ namespace rob {
 		SDLApp(unsigned int width, unsigned int height);
 		~SDLApp();
 
-		void registerInput();
+		void registerInput(int &x, int& y);
 		void clearScreen();
 		void drawScene();
 
@@ -89,8 +89,9 @@ namespace rob {
 		SDL_Quit();
 	}
 
-	void SDLApp::registerInput() {
+	void SDLApp::registerInput(int &x, int &y) {
 		SDL_Event event;
+		Uint32 buttons;
 
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
@@ -98,6 +99,7 @@ namespace rob {
 				exit(0);
 				break;
 			default:
+				buttons = SDL_GetMouseState(&x, &y);
 				break;
 			}
 		}
