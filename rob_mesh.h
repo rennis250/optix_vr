@@ -4,10 +4,29 @@
 #include <vector_types.h>
 
 #include <vector>
+#include <set>
+
 #include "vec.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
+
+namespace std {
+	inline bool operator<(const tinyobj::index_t& a,
+		const tinyobj::index_t& b)
+	{
+		if (a.vertex_index < b.vertex_index) return true;
+		if (a.vertex_index > b.vertex_index) return false;
+
+		if (a.normal_index < b.normal_index) return true;
+		if (a.normal_index > b.normal_index) return false;
+
+		if (a.texcoord_index < b.texcoord_index) return true;
+		if (a.texcoord_index > b.texcoord_index) return false;
+
+		return false;
+	}
+}
 
 namespace rob {
 	class Mesh {
@@ -22,6 +41,8 @@ namespace rob {
 		void add_index(int3 i);
 		void set_albedo(float3 a);
 
+		int add_obj_vertex(tinyobj::attrib_t attrib, tinyobj::index_t index, std::map<tinyobj::index_t, int> knownVertices);
+
 	private:
 		std::vector<float3> m_vertices;
 		std::vector<int3> m_indices;
@@ -31,6 +52,25 @@ namespace rob {
 
 	void Mesh::add_vertex(float3 v) {
 		m_vertices.push_back(v);
+	}
+
+	int Mesh::add_obj_vertex(tinyobj::attrib_t attrib, tinyobj::index_t index, std::map<tinyobj::index_t, int> knownVertices) {
+		if (knownVertices.find(index) != knownVertices.end()) {
+			return knownVertices[index];
+		}
+
+		int newID = m_vertices.size();
+		knownVertices[index] = newID;
+
+		float3 vertex = make_float3(0.0, 0.0, 0.0);
+
+		vertex.x = attrib.vertices[3 * index.vertex_index + 0];
+		vertex.y = attrib.vertices[3 * index.vertex_index + 1];
+		vertex.z = attrib.vertices[3 * index.vertex_index + 2];
+
+		m_vertices.push_back(vertex);
+
+		return newID;
 	}
 
 	void Mesh::add_index(int3 i) {
@@ -109,7 +149,7 @@ namespace rob {
 		std::vector<tinyobj::material_t> materials;
 		std::string warn, err;
 
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./models/sponza.obj", "./models", true)) {
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./models/test_rob.obj", "./models", true)) {
 			throw std::runtime_error(warn + err);
 		}
 
@@ -118,36 +158,46 @@ namespace rob {
 
 		std::cout << "Done loading obj file - found " << shapes.size() << " shapes with " << materials.size() << " materials" << std::endl;
 
+
 		for (const auto& shape : shapes) {
-			rob::Mesh mesh;
+			std::map<tinyobj::index_t, int> knownVertices;
 
-			for (const auto& index : shape.mesh.indices) {
-				float3 vertex = make_float3(0.0, 0.0, 0.0);
-
-				vertex.x = attrib.vertices[3 * index.vertex_index + 0];
-				vertex.y = attrib.vertices[3 * index.vertex_index + 1];
-				vertex.z = attrib.vertices[3 * index.vertex_index + 2];
-
-				mesh.add_vertex(vertex);
-
-				mesh.set_albedo(
-					make_float3(
-						static_cast<float>(rand() % 255)/255.0,
-						static_cast<float>(rand() % 255) / 255.0,
-						static_cast<float>(rand() % 255) / 255.0
-					)
-				);
-
-				mesh.add_index(
-					make_int3(
-						mesh.get_indices().size() + 0,
-						mesh.get_indices().size() + 1,
-						mesh.get_indices().size() + 2
-					)
-				);
+			std::set<int> materialIDs;
+			for (auto faceMatID : shape.mesh.material_ids) {
+				materialIDs.insert(faceMatID);
 			}
 
-			m_meshes.push_back(mesh);
+			for (int materialID : materialIDs) {
+				rob::Mesh mesh;
+
+				for (int faceID = 0; faceID < shape.mesh.material_ids.size(); faceID++) {
+					if (shape.mesh.material_ids[faceID] != materialID) {
+						continue;
+					}
+
+					tinyobj::index_t idx0 = shape.mesh.indices[3 * faceID + 0];
+					tinyobj::index_t idx1 = shape.mesh.indices[3 * faceID + 1];
+					tinyobj::index_t idx2 = shape.mesh.indices[3 * faceID + 2];
+
+					int3 idx = make_int3(
+						mesh.add_obj_vertex(attrib, idx0, knownVertices),
+						mesh.add_obj_vertex(attrib, idx1, knownVertices),
+						mesh.add_obj_vertex(attrib, idx2, knownVertices)
+					);
+
+					mesh.add_index(idx);
+					
+					mesh.set_albedo(
+						make_float3(
+							static_cast<float>(rand() % 255) / 255.0,
+							static_cast<float>(rand() % 255) / 255.0,
+							static_cast<float>(rand() % 255) / 255.0
+						)
+					);
+				}
+
+				m_meshes.push_back(mesh);
+			}
 		}
 	}
 }

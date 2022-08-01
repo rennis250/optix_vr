@@ -454,8 +454,6 @@ namespace rob {
 
 				sbt.data.albedo = m_meshes[meshID].get_albedo();
 
-				std::cout << sbt.data.albedo.x << ", " << sbt.data.albedo.y << ", " << sbt.data.albedo.z << std::endl;
-
 				sbt.data.vertices = (float3*)m_d_vertices[meshID];
 				sbt.data.indices = (int3*)m_d_indices[meshID];
 

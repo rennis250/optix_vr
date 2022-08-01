@@ -121,7 +121,7 @@ extern "C" __global__ void __raygen__rg() {
     float3 ray_origin;
     float3 ray_dir;
 
-    int NSAMPLES = 50;
+    int NSAMPLES = 150;
 
     float3 uv = make_float3(
         static_cast<float>(idx.x) / static_cast<float>(dim.x) - 0.5,
