@@ -86,6 +86,13 @@ __device__ float3 Reflect(const float3 v, const float3 n) {
     return -1.0 * v + 2.0 * dot(v, n) * n;
 }
 
+float3 refract(const float3 uv, const float3 n, double etai_over_etat) {
+    auto cos_theta = min(dot(-1.0 * uv, n), 1.0);
+    float3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
+    float3 r_out_parallel = -1.0 * sqrtf(fabs(1.0 - dot(r_out_perp, r_out_perp))) * n;
+    return r_out_perp + r_out_parallel;
+}
+
 inline float3 set_face_normal(const float3 ray_direction, const float3 outward_normal) {
     bool front_face = dot(ray_direction, outward_normal) < 0;
     return front_face ? outward_normal : -1.0 * outward_normal;

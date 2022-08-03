@@ -121,13 +121,18 @@ extern "C" __global__ void __raygen__rg() {
     float3 ray_origin;
     float3 ray_dir;
 
-    int NSAMPLES = 150;
+    int NSAMPLES = 100;
 
     float3 uv = make_float3(
         static_cast<float>(idx.x) / static_cast<float>(dim.x) - 0.5,
         static_cast<float>(idx.y) / static_cast<float>(dim.y) - 0.5,
         0.0f
     );
+
+    if (sqrtf(dot(uv, uv)) > 0.5) {
+        params.image[idx.y * params.image_width + idx.x] = make_color(make_float3(0.0, 0.0, 0.0));
+        return;
+    }
 
     int nsamps = int(1.0 / (1.0 + 0.5 * sqrtf(dot(uv, uv))) * float(NSAMPLES));
     float oneOverSPP = 1.0 / float(nsamps);

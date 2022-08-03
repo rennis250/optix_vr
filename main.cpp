@@ -11,8 +11,8 @@
 
 #include "exceptions.h"
 
-const unsigned int width = 256;
-const unsigned int height = 256;
+const unsigned int width = 512;
+const unsigned int height = 512;
 
 int main(int argc, char* argv[]) {
 	auto sdlApp = rob::SDLApp(width, height);
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
 
 		sdlApp.drawScene();
 
-		SDL_Delay(16);
+		// SDL_Delay(16);
 	}
 
 	try {

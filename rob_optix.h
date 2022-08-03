@@ -29,7 +29,6 @@ namespace rob {
 		void create_pipeline();
 		void allocate_record(RayGenSbtRecord& sbt);
 		void allocate_record(MissSbtRecord& sbt);
-		// void allocate_record(HitGroupSbtRecord& sbt);
 		void allocate_hg_records();
 		void build_sbt();
 		void upload_params(Params params);
@@ -353,7 +352,7 @@ namespace rob {
 	template<typename T>
 	void OptixState<T>::create_pipeline() {
 		try {
-			m_pipeline_link_options.maxTraceDepth = 2;
+			m_pipeline_link_options.maxTraceDepth = 10;
 			m_pipeline_link_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
 
 			char olog[2048];

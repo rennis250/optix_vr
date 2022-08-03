@@ -41,7 +41,7 @@ namespace rob {
 		// Default OpenGL is fine.
 		SDL_GL_LoadLibrary(NULL);
 		
-		// Request an OpenGL 4.5 context (should be core)
+		// Request an OpenGL 4.1 context (should be core)
 		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -67,7 +67,7 @@ namespace rob {
 			exit(1);
 		}
 
-		SDL_GL_SetSwapInterval(1);
+		SDL_GL_SetSwapInterval(-1);
 
 		// Check OpenGL properties
 		printf("OpenGL loaded\n");

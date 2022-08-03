@@ -66,9 +66,38 @@ float FrConductor(float cosThetaI, float etai, float etat, float k) {
     return 0.5 * (Rp + Rs);
 }
 
+float FrDielectric(float cosThetaI, float etaI, float etaT) {
+    cosThetaI = clamp(cosThetaI, -1.0, 1.0);
+
+    // Potentially swap indices of refraction
+    bool entering = cosThetaI > 0.0;
+    if (!entering) {
+        float tmp = etaT;
+        etaT = etaI;
+        etaI = tmp;
+        cosThetaI = fabs(cosThetaI);
+    }
+
+    // Compute _cosThetaT_ using Snell's law
+    float sinThetaI = sqrtf(max(0.0, 1.0 - cosThetaI * cosThetaI));
+    float sinThetaT = etaI / etaT * sinThetaI;
+
+    // Handle total internal reflection
+    if (sinThetaT >= 1.0) return 1.0;
+
+    float cosThetaT = sqrtf(max(0.0, 1.0 - sinThetaT * sinThetaT));
+
+    float Rparl = ((etaT * cosThetaI) - (etaI * cosThetaT)) /
+        ((etaT * cosThetaI) + (etaI * cosThetaT));
+    float Rperp = ((etaI * cosThetaI) - (etaT * cosThetaT)) /
+        ((etaI * cosThetaI) + (etaT * cosThetaT));
+    return (Rparl * Rparl + Rperp * Rperp) / 2.0;
+}
+
 enum Material {
-    METAL = 0,
-    LAMB
+    LAMB = 0,
+    GLASS,
+    METAL
 };
 
 __device__ float3 finiteScatteringDensity(Surfel &surfelX, float3 woW, float &eta_for_RR, float &pdf) {
@@ -91,8 +120,38 @@ __device__ float3 finiteScatteringDensity(Surfel &surfelX, float3 woW, float &et
         }
     } else if (mat == METAL) {
         surfelX.position = surfelX.position + n * EPS;
-        surfelX.wi = Reflect(normalize(woW), n);
+        surfelX.wi = reflect(-1.0 * woW, n);
         pdf = 1.0;
         return surfelX.albedo * FrConductor(fabs(dot(surfelX.wi, n)), 1.0, 1.4, 1.6) / fabs(dot(surfelX.wi, n));
+    } else if (mat == GLASS) {
+        float cos_theta = dot(normalize(woW), normalize(n));
+        float extIor = 1.0;
+        float intIor = 1.5;
+
+        float eta;
+        float3 outward_normal;
+        if (cos_theta < 0.0) {
+            outward_normal = -1.0 * n;
+            eta = intIor / extIor;
+        }
+        else {
+            outward_normal = n;
+            eta = extIor / intIor;
+        }
+        eta_for_RR = eta;
+
+        float F = FrDielectric(cos_theta, extIor, intIor);
+        if (rnd(surfelX.seed) <= F) {
+            surfelX.wi = reflect(-1.0 * woW, n);
+            surfelX.position = surfelX.position + outward_normal * EPS;
+            pdf = F;
+            return UNITY * F / fabs(dot(surfelX.wi, n));
+        }
+        else {
+            surfelX.wi = refract(woW, outward_normal, eta);
+            surfelX.position = surfelX.position - outward_normal * EPS;
+            pdf = 1.0 - F;
+            return UNITY * (eta * eta) * (1.0 - F) / fabs(dot(surfelX.wi, n));
+        }
     }
 }
