@@ -78,8 +78,12 @@ inline __both__ float3 normalize(const float3 v)
     return make_float3(v.x * l, v.y * l, v.z * l);
 }
 
-inline __both__ float3 reflect(const float3 v, const float3 n) {
+__both__ float3 reflect(const float3 v, const float3 n) {
     return v - 2.0 * dot(v, n) * n;
+}
+
+__device__ float3 Reflect(const float3 v, const float3 n) {
+    return -1.0 * v + 2.0 * dot(v, n) * n;
 }
 
 inline float3 set_face_normal(const float3 ray_direction, const float3 outward_normal) {

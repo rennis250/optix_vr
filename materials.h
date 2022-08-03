@@ -66,15 +66,20 @@ float FrConductor(float cosThetaI, float etai, float etat, float k) {
     return 0.5 * (Rp + Rs);
 }
 
+enum Material {
+    METAL = 0,
+    LAMB
+};
+
 __device__ float3 finiteScatteringDensity(Surfel &surfelX, float3 woW, float &eta_for_RR, float &pdf) {
-    // Material mat = surfelX.mat;
+    int mat = surfelX.mat;
     float3 X = surfelX.position;
     float3 n = surfelX.shadingNormal;
 
     mat3 ltow = ONB(n);
     mat3 wtol = transpose(ltow);
 
-    // if (mat.type == LAMB) {
+    if (mat == LAMB) {
         surfelX.wi = apply_onb(ltow, cosWeightHemi(surfelX.seed));
         if (dot(surfelX.wi, n) > 0.0 && dot(woW, n) > 0.0) {
             surfelX.position = surfelX.position + n * EPS;
@@ -84,10 +89,10 @@ __device__ float3 finiteScatteringDensity(Surfel &surfelX, float3 woW, float &et
             pdf = 0.0;
             return make_float3(0.0, 0.0, 0.0);
         }
-    // else if (mat.type == METAL) {
-        // surfelX.position = surfelX.position + n * EPS;
-        // surfelX.wi = reflect(-1.0 * woW, n);
-        // pdf = 1.0;
-        // return surfelX.albedo * FrConductor(fabsf(dot(surfelX.wi, n)), 1.0, 1.4, 1.6) / fabsf(dot(surfelX.wi, n));
-    // }
+    } else if (mat == METAL) {
+        surfelX.position = surfelX.position + n * EPS;
+        surfelX.wi = Reflect(normalize(woW), n);
+        pdf = 1.0;
+        return surfelX.albedo * FrConductor(fabs(dot(surfelX.wi, n)), 1.0, 1.4, 1.6) / fabs(dot(surfelX.wi, n));
+    }
 }

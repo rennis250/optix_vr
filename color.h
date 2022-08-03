@@ -4,12 +4,50 @@
 
 #include "vec.h"
 
+#define UNITY_N 1.0
+#define UNITY make_float3(1.0, 1.0, 1.0)
+#define BLUEILLUM make_float3(0.5, 0.7, 1.0)
+#define BLUEILLUM_N 1.0
+#define YELLOWILLUM make_float3(0.8, 0.5, 0.3)
+#define YELLOWILLUM_N 1.0
+
+__device__ float3 mix(float3 a, float3 b, float t) {
+    return (1.0 - t) * a + t * b;
+}
+
+__device__ float mix(float a, float b, float t) {
+    return (1.0 - t) * a + t * b;
+}
+
+__device__ float smoothstep(float a, float b, float x) {
+    float t = clamp((x - a) / (b - a), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+
 __device__ float3 skyColor(float3 ray_direction) {
     float3 n = normalize(ray_direction);
-    float t = (n.y + 1.0);
-    float3 a = make_float3(1.0, 1.0, 1.0);
-    float3 b = make_float3(0.5, 0.7, 1.0);
-    return (1.0 - t) * a + t * b;
+    // float t = (n.y + 1.0);
+    // float3 a = make_float3(1.0, 1.0, 1.0);
+    // float3 b = make_float3(0.5, 0.7, 1.0);
+    // return (1.0 - t) * a + t * b;
+
+    float3 illum_col = UNITY;
+    float N = 1.0 / UNITY_N;
+    illum_col = illum_col * 1.0 * N;
+
+    float3 col = mix(BLUEILLUM, YELLOWILLUM, smoothstep(-0.001, 0.001, ray_direction.x));
+    float corrFactor = mix(BLUEILLUM_N, YELLOWILLUM_N, smoothstep(-0.001, 0.001, ray_direction.x));
+
+    float3 sunDir1 = make_float3(-0.7, 0.8, 0.2);
+    col = mix(col / corrFactor, illum_col, 0.5 + 0.5 * -ray_direction.y);
+    float sun = clamp(dot(normalize(sunDir1), ray_direction), 0.0, 1.0);
+    col = col + illum_col * (powf(sun, 44.0) + 10.0 * powf(sun, 256.0));
+
+    float3 sunDir2 = make_float3(0.1, 0.3, 0.3);
+    sun = clamp(dot(normalize(sunDir2), ray_direction), 0.0, 1.0);
+    col = col + illum_col * (powf(sun, 44.0) + 10.0 * powf(sun, 256.0));
+
+    return col;
 }
 
 // from Mitsuba

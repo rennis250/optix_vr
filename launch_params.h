@@ -19,6 +19,7 @@ struct HitGroupData {
     float3 albedo;
     float3* vertices;
     int3* indices;
+    int mat;
 };
 
 struct MissData {

@@ -40,6 +40,7 @@ namespace rob {
 		void add_vertex(float3 v);
 		void add_index(int3 i);
 		void set_albedo(float3 a);
+		void set_mat(int);
 
 		int add_obj_vertex(tinyobj::attrib_t attrib, tinyobj::index_t index, std::map<tinyobj::index_t, int> knownVertices);
 
@@ -52,6 +53,10 @@ namespace rob {
 
 	void Mesh::add_vertex(float3 v) {
 		m_vertices.push_back(v);
+	}
+
+	void Mesh::set_mat(int m) {
+		m_mats = m;
 	}
 
 	int Mesh::add_obj_vertex(tinyobj::attrib_t attrib, tinyobj::index_t index, std::map<tinyobj::index_t, int> knownVertices) {
@@ -158,7 +163,6 @@ namespace rob {
 
 		std::cout << "Done loading obj file - found " << shapes.size() << " shapes with " << materials.size() << " materials" << std::endl;
 
-
 		for (const auto& shape : shapes) {
 			std::map<tinyobj::index_t, int> knownVertices;
 
@@ -169,6 +173,8 @@ namespace rob {
 
 			for (int materialID : materialIDs) {
 				rob::Mesh mesh;
+
+				mesh.set_mat(materialID);
 
 				for (int faceID = 0; faceID < shape.mesh.material_ids.size(); faceID++) {
 					if (shape.mesh.material_ids[faceID] != materialID) {
@@ -186,12 +192,12 @@ namespace rob {
 					);
 
 					mesh.add_index(idx);
-					
+
 					mesh.set_albedo(
 						make_float3(
-							static_cast<float>(rand() % 255) / 255.0,
-							static_cast<float>(rand() % 255) / 255.0,
-							static_cast<float>(rand() % 255) / 255.0
+							materials[materialID].diffuse[0],
+							materials[materialID].diffuse[1],
+							materials[materialID].diffuse[2]
 						)
 					);
 				}

@@ -42,20 +42,7 @@ int main(int argc, char* argv[]) {
 
 	std::vector<rob::Mesh> meshes(2);
 	
-	float3 center = make_float3(0.5, 0.5, -0.5);
-	float3 size = make_float3(0.5, 1.0, 1.0);
-	float3 color = make_float3(0.8, 0.1, 0.1);
-	int mat = 0;
-	meshes[0].make_cube(center, size, color, mat);
-
-	center = make_float3(0.0, 0.0, 0.0);
-	size = make_float3(100.0, 0.1, 100.0);
-	color = make_float3(0.5, 0.5, 0.5);
-	mat = 1;
-	meshes[1].make_cube(center, size, color, mat);
-
 	optState.build_shape(model.get_meshes());
-	// optState.build_shape(meshes);
 	optState.setup_gas();
 	optState.create_module();
 
@@ -81,7 +68,6 @@ int main(int argc, char* argv[]) {
 	params.image_width = width;
 	params.image_height = height;
 	params.cam_eye = make_float3(0.0f, 1.5f, 11.0f);
-	// params.cam_eye = make_float3(-1293.07f, 154.681f, -0.7304f);
 	params.cam_u = make_float3(1.0f, 0.0f, 0.0f);
 	params.cam_v = make_float3(0.0f, 1.0f, 0.0f);
 	params.cam_w = make_float3(0.0f, 0.0f, -2.0f);
@@ -113,8 +99,8 @@ int main(int argc, char* argv[]) {
 		sdlApp.registerInput(x, y);
 
 		params.cam_eye = make_float3(
-			static_cast<float>(x)/static_cast<float>(width) + 0.5,
-			static_cast<float>(y)/static_cast<float>(height) + 0.5,
+			5.0 * static_cast<float>(x)/static_cast<float>(width) - 2.5,
+			5.0 * static_cast<float>(y)/static_cast<float>(height) - 2.5,
 			6.0f
 		);
 		

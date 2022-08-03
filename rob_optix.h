@@ -453,7 +453,7 @@ namespace rob {
 				OPTIX_CHECK(optixSbtRecordPackHeader(m_hitgroup_prog_group, &sbt));
 
 				sbt.data.albedo = m_meshes[meshID].get_albedo();
-
+				sbt.data.mat = m_meshes[meshID].get_mats();
 				sbt.data.vertices = (float3*)m_d_vertices[meshID];
 				sbt.data.indices = (int3*)m_d_indices[meshID];
 

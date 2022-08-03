@@ -42,7 +42,7 @@ __device__ float3 L_i(Surfel &surfelY, float3 ray_origin, float3 ray_dir, unsign
     float3 beta = make_float3(1.0, 1.0, 1.0);
     float pdf = 0.0;
     float3 fr, wo;
-    float eta_for_RR = 0.0;
+    float eta_for_RR = 1.0;
     float etaScale = 0.0;
 
     float3 X = ray_origin;
@@ -176,6 +176,7 @@ extern "C" __global__ void __closesthit__ch() {
     surfelY->position = optixGetWorldRayOrigin() + t * ray_dir;
     surfelY->shadingNormal = nor;
     surfelY->albedo = sbtData.albedo;
+    surfelY->mat = sbtData.mat;
 }
 
 extern "C" __global__ void __miss__ms() {
